@@ -25,16 +25,20 @@ jobs:
 
     - name: Build and Package UWP (ARM Release)
       run: |
-        msbuild ZaloW10M\ZaloW10M.csproj /p:Configuration=Release `
-                                         /p:Platform=ARM `
-                                         /p:AppxPackageDir="..\AppPackages\" `
-                                         /p:AppxBundle=Always `
-                                         /p:AppxBundlePlatforms="ARM" `
-                                         /p:UapAppxPackageBuildMode=SideLoadOnly `
-                                         /p:AppxPackageSigningEnabled=false
+        msbuild ZaloW10M.sln /p:Configuration=Release `
+                             /p:Platform=ARM `
+                             /p:AppxPackageDir="D:\a\ZaloW10M\ZaloW10M\AppPackages\" `
+                             /p:AppxBundle=Always `
+                             /p:AppxBundlePlatforms="ARM" `
+                             /p:UapAppxPackageBuildMode=SideLoadOnly `
+                             /p:AppxPackageSigningEnabled=false `
+                             /fl /flp:logfile=msbuild.log;verbosity=normal
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
+      if: always()
       with:
-        name: ZaloW10M-ARM-Package
-        path: AppPackages/**/*
+        name: ZaloW10M-Build-Output
+        path: |
+          AppPackages/**/*
+          msbuild.log
