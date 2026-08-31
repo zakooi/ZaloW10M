@@ -1,4 +1,4 @@
-﻿name: Build UWP for Windows 10 Mobile (ARM)
+name: Build UWP for Windows 10 Mobile (ARM)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-latest
 
     steps:
     - name: Checkout Code
