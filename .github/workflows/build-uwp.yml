@@ -21,18 +21,23 @@ jobs:
       uses: nuget/setup-nuget@v2
 
     - name: Restore NuGet Packages
-      run: nuget restore ZaloW10M.sln
+      run: |
+        nuget restore ZaloW10M.sln
+        msbuild ZaloW10M.sln /t:Restore /p:Platform=ARM
 
     - name: Build and Package UWP (ARM Release)
+      shell: powershell
       run: |
-        msbuild ZaloW10M.sln /p:Configuration=Release `
-                             /p:Platform=ARM `
-                             /p:AppxPackageDir="D:\a\ZaloW10M\ZaloW10M\AppPackages\" `
-                             /p:AppxBundle=Always `
-                             /p:AppxBundlePlatforms="ARM" `
-                             /p:UapAppxPackageBuildMode=SideLoadOnly `
-                             /p:AppxPackageSigningEnabled=false `
-                             /fl /flp:logfile=msbuild.log;verbosity=normal
+        $buildCmd = "msbuild ZaloW10M.sln /p:Configuration=Release /p:Platform=ARM /p:AppxPackageDir=""$($env:GITHUB_WORKSPACE)\AppPackages\"" /p:AppxBundle=Always /p:AppxBundlePlatforms=ARM /p:UapAppxPackageBuildMode=SideLoadOnly /p:AppxPackageSigningEnabled=false /fl /flp:logfile=msbuild.log;verbosity=normal"
+        Write-Host "Running: $buildCmd"
+        Invoke-Expression $buildCmd
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "=== MSBUILD ERROR LOG ==="
+            if (Test-Path msbuild.log) {
+                Get-Content msbuild.log | Select-String -Pattern "error", "MSB", "FAILED" -Context 2,2
+            }
+            exit 1
+        }
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
