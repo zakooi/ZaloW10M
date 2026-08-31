@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         IgnorableNamespaces="uap mp">
+  <Identity Name="ZaloW10M.Client" Publisher="CN=ZaloW10M" Version="1.0.0.0" />
+  <mp:PhoneIdentity PhoneProductId="a84f3e69-1234-4567-8901-abcdef123456" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <Properties>
+    <DisplayName>Zalo W10M</DisplayName>
+    <PublisherDisplayName>ZaloW10M</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Zalo Client for Windows 10 Mobile</Description>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.10586.0" MaxVersionTested="10.0.16299.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="x-generate"/>
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="$targetnametargetsize$.exe" EntryPoint="ZaloW10M.App">
+      <uap:VisualElements DisplayName="Zalo W10M" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="Zalo W10M" BackgroundColor="#0068FF">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
+        <uap:SplashScreen Image="Assets\SplashScreen.png" BackgroundColor="#0068FF"/>
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <Capability Name="internetClient" />
+  </Capabilities>
+</Package>
