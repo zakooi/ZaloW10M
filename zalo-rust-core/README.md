@@ -12,9 +12,10 @@ Crate Rust thuần túy, **clean-room**: các thuật toán được mô tả l�
 - [x] 6 unit test, đối chiếu với vector độc lập từ OpenSSL và Python `cryptography`.
 - [x] Smoke test gọi C ABI từ C: `signkey=6c5d80bd07783d9b32e1a39690d1d451`, ping frame `010200017b226576656e744964223a3132337d`.
 - [x] Phân tích XAPK bằng REA: inventory, chữ ký v2/v3, manifest, 46,897 class, ánh xạ JNI → `libznetwork.so` / `libzalosqlite.so` / `libnative_utils.so` / `libzvision-jni.so`.
-- [x] `src/yuv.rs`: I420↔NV21 + rotate 90/180/270, đối chiếu vector tham chiếu độc lập (10/10 test).
+- [x] `src/yuv.rs`: I420↔NV21 + rotate 90/180/270 + bilinear scale + I420→ARGB/ABGR (BT.601), 14/14 test với vector tham chiếu độc lập.
+- [x] C ABI + wrapper C# cho toàn bộ thao tác YUV.
 - [ ] Đối chiếu byte-for-byte hàm sign với `libnative_utils.so` trên thiết bị/thư viện ARM.
-- [ ] Scale I420 (JNI `nativeI420Scale`) và I420→ARGB/ABGR.
+- [ ] Đối chiếu output scale/ARGB/ABGR với `libzvision-jni.so` — hiện là định nghĩa clean-room, chưa đảm bảo khớp bộ lọc/thứ tự kênh native.
 - [ ] Build ARM cho UWP / đóng gói APPX / deploy W10M (cần máy Windows).
 
 ## Build và test
@@ -58,17 +59,21 @@ Ngoài ra W10M đã ngừng hỗ trợ; cài đặt thực tế thường cần 
 | `encrypt_aes_cbc` / `decrypt_aes_cbc` | `zalo_encrypt_aes_cbc` / `zalo_decrypt_aes_cbc` | AES-CBC PKCS7, IV zero, base64 |
 | `decrypt_aes_gcm` | `zalo_decrypt_aes_gcm` | Giải mã payload `IV|tag|ciphertext` |
 | `parse_frame` / `build_ping_frame` | `zalo_parse_frame` / `zalo_build_ping_frame` | Đóng/gỡ frame 4-byte header |
+| `i420_to_nv21` / `nv21_to_i420` | `zalo_i420_to_nv21` | Chuyển đổi I420↔NV21 |
+| `rotate_i420` | `zalo_rotate_i420` | Xoay I420 90/180/270 độ |
+| `i420_scale` | `zalo_i420_scale` | Scale I420 bằng bilinear sampling |
+| `i420_to_argb` / `i420_to_abgr` | `zalo_i420_to_argb` / `zalo_i420_to_abgr` | BT.601 limited range, 4 byte/pixel (A,R,G,B hoặc A,B,G,R) |
 
 Mọi chuỗi trả về từ C ABI phải giải phóng bằng `zalo_free_string`; buffer byte bằng `zalo_free_bytes`.
 
 ## Phạm vi và pháp lý
 
-Chỉ dùng cho nghiên cứu, tương tác và bảo tồn trên artifact bạn có quyền phân tích. Không dùng để copy code/tài sản độc quyền hay vượt qua bản quyền. REA được cài ở máy này nhưng **chưa chạy trên APK nào** vì chưa có file target.
+Chỉ dùng cho nghiên cứu, tương tác và bảo tồn trên artifact bạn có quyền phân tích. Không dùng để copy code/tài sản độc quyền hay vượt qua bản quyền. REA đã được dùng để phân tích **tĩnh** XAPK Zalo; chi tiết, Evidence ID và giới hạn tại `docs/apk-findings.md`. Không có code/assets/native binary nào từ APK được đưa vào crate.
 
 ## Bước tiếp theo
 
 1. Đối chiếu `generate_sign_key` với `generateSignatureNative` (`libnative_utils.so`) bằng cách chạy thư viện ARM trên thiết bị hoặc emulator có quyền.
-2. Hoàn thiện `nativeI420Scale` và `nativeI420ToARGB/ABGR`, mỗi hàm có vector tham chiếu riêng.
+2. Đối chiếu `i420_scale`/`i420_to_argb`/`i420_to_abgr` với `libzvision-jni.so` trên thiết bị ARM (bao gồm thứ tự kênh và bộ lọc scale) rồi hiệu chỉnh nếu cần.
 3. Đo benchmark Rust vs `libzvision-jni.so`/libyuv trên cùng input trước khi khẳng định nhanh hơn.
 4. Tích hợp staticlib vào UWP và thử đóng gói APPX trên máy Windows (ARM tier 3).
 

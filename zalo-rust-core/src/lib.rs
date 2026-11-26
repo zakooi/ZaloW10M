@@ -412,6 +412,73 @@ pub extern "C" fn zalo_rotate_i420(
 }
 
 #[no_mangle]
+pub extern "C" fn zalo_i420_to_argb(
+    i420: *const u8,
+    len: usize,
+    width: usize,
+    height: usize,
+    out: *mut *mut u8,
+    out_len: *mut usize,
+) -> c_int {
+    if i420.is_null() {
+        return -1;
+    }
+    let bytes = unsafe { std::slice::from_raw_parts(i420, len) };
+    match yuv::i420_to_argb(bytes, width, height) {
+        Ok(result) => unsafe { out_bytes(out, out_len, &result) },
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn zalo_i420_to_abgr(
+    i420: *const u8,
+    len: usize,
+    width: usize,
+    height: usize,
+    out: *mut *mut u8,
+    out_len: *mut usize,
+) -> c_int {
+    if i420.is_null() {
+        return -1;
+    }
+    let bytes = unsafe { std::slice::from_raw_parts(i420, len) };
+    match yuv::i420_to_abgr(bytes, width, height) {
+        Ok(result) => unsafe { out_bytes(out, out_len, &result) },
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn zalo_i420_scale(
+    i420: *const u8,
+    len: usize,
+    width: usize,
+    height: usize,
+    new_width: usize,
+    new_height: usize,
+    out: *mut *mut u8,
+    out_len: *mut usize,
+    out_width: *mut usize,
+    out_height: *mut usize,
+) -> c_int {
+    if i420.is_null() || out_width.is_null() || out_height.is_null() {
+        return -1;
+    }
+    let bytes = unsafe { std::slice::from_raw_parts(i420, len) };
+    match yuv::i420_scale(bytes, width, height, new_width, new_height) {
+        Ok((result, w, h)) => {
+            unsafe {
+                *out_width = w;
+                *out_height = h;
+            }
+            unsafe { out_bytes(out, out_len, &result) }
+        }
+        Err(_) => -1,
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn zalo_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         unsafe {

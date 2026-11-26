@@ -33,6 +33,31 @@ namespace ZaloW10M.Core
         private static extern int zalo_build_ping_frame(long eventId, out IntPtr bytes, out int length);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int zalo_i420_to_nv21(
+            byte[] i420, int length, int width, int height,
+            out IntPtr bytes, out int outLength);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int zalo_rotate_i420(
+            byte[] i420, int length, int width, int height, int degrees,
+            out IntPtr bytes, out int outLength, out int outWidth, out int outHeight);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int zalo_i420_scale(
+            byte[] i420, int length, int width, int height, int newWidth, int newHeight,
+            out IntPtr bytes, out int outLength, out int outWidth, out int outHeight);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int zalo_i420_to_argb(
+            byte[] i420, int length, int width, int height,
+            out IntPtr bytes, out int outLength);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int zalo_i420_to_abgr(
+            byte[] i420, int length, int width, int height,
+            out IntPtr bytes, out int outLength);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void zalo_free_string(IntPtr ptr);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -111,20 +136,71 @@ namespace ZaloW10M.Core
                 (string)obj["payload"]);
         }
 
-        internal static byte[] BuildPingFrame(long eventId)
+        private static byte[] ReadAndFreeBytes(IntPtr ptr, int length)
         {
-            if (zalo_build_ping_frame(eventId, out IntPtr bytes, out int length) != 0)
-                throw new InvalidOperationException("zalo_build_ping_frame failed.");
             try
             {
+                if (ptr == IntPtr.Zero || length < 0)
+                    throw new InvalidOperationException("Native call returned no byte buffer.");
                 var result = new byte[length];
-                Marshal.Copy(bytes, result, 0, length);
+                Marshal.Copy(ptr, result, 0, length);
                 return result;
             }
             finally
             {
-                zalo_free_bytes(bytes, length);
+                if (ptr != IntPtr.Zero) zalo_free_bytes(ptr, length);
             }
+        }
+
+        private static void Check(int status, string name)
+        {
+            if (status != 0) throw new InvalidOperationException(name + " failed.");
+        }
+
+        internal static byte[] BuildPingFrame(long eventId)
+        {
+            Check(zalo_build_ping_frame(eventId, out IntPtr bytes, out int length),
+                  "zalo_build_ping_frame");
+            return ReadAndFreeBytes(bytes, length);
+        }
+
+        internal static byte[] I420ToNv21(byte[] i420, int width, int height)
+        {
+            Check(zalo_i420_to_nv21(i420, i420.Length, width, height, out IntPtr bytes, out int length),
+                  "zalo_i420_to_nv21");
+            return ReadAndFreeBytes(bytes, length);
+        }
+
+        internal static (byte[] data, int width, int height) RotateI420(
+            byte[] i420, int width, int height, int degrees)
+        {
+            Check(zalo_rotate_i420(i420, i420.Length, width, height, degrees,
+                      out IntPtr bytes, out int length, out int newWidth, out int newHeight),
+                  "zalo_rotate_i420");
+            return (ReadAndFreeBytes(bytes, length), newWidth, newHeight);
+        }
+
+        internal static (byte[] data, int width, int height) ScaleI420(
+            byte[] i420, int width, int height, int newWidth, int newHeight)
+        {
+            Check(zalo_i420_scale(i420, i420.Length, width, height, newWidth, newHeight,
+                      out IntPtr bytes, out int length, out int outWidth, out int outHeight),
+                  "zalo_i420_scale");
+            return (ReadAndFreeBytes(bytes, length), outWidth, outHeight);
+        }
+
+        internal static byte[] I420ToArgb(byte[] i420, int width, int height)
+        {
+            Check(zalo_i420_to_argb(i420, i420.Length, width, height, out IntPtr bytes, out int length),
+                  "zalo_i420_to_argb");
+            return ReadAndFreeBytes(bytes, length);
+        }
+
+        internal static byte[] I420ToAbgr(byte[] i420, int width, int height)
+        {
+            Check(zalo_i420_to_abgr(i420, i420.Length, width, height, out IntPtr bytes, out int length),
+                  "zalo_i420_to_abgr");
+            return ReadAndFreeBytes(bytes, length);
         }
     }
 }
