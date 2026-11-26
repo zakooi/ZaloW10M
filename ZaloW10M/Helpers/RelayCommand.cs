@@ -20,6 +20,5 @@ namespace ZaloW10M.Helpers
 
         public void Execute(object parameter) => _execute();
 
-        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }

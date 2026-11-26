@@ -5,6 +5,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Security.Cryptography;
 using Windows.Security.Cryptography.Core;
 using Windows.Storage.Streams;
+using Windows.System.Profile;
 
 namespace ZaloW10M.Core
 {
@@ -45,26 +46,6 @@ namespace ZaloW10M.Core
             }
         }
 
-        public static string DecryptAesCbc(string base64Data, string base64Key)
-        {
-            try
-            {
-                var keyBytes = Convert.FromBase64String(base64Key);
-                var provider = SymmetricKeyAlgorithmProvider.OpenAlgorithm(SymmetricAlgorithmNames.AesCbcPkcs7);
-                var key = provider.CreateSymmetricKey(keyBytes.AsBuffer());
-
-                var iv = new byte[16].AsBuffer();
-                var cipherBuffer = CryptographicBuffer.DecodeFromBase64String(base64Data);
-
-                var decrypted = CryptographicEngine.Decrypt(key, cipherBuffer, iv);
-                return CryptographicBuffer.ConvertBinaryToString(BinaryStringEncoding.Utf8, decrypted);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         public static string DecryptAesGcm(byte[] payload, string cipherKeyBase64)
         {
             try
@@ -89,9 +70,10 @@ namespace ZaloW10M.Core
             }
         }
 
-        public static string GenerateImei()
+        public static string GenerateDeviceId()
         {
-            return Guid.NewGuid().ToString("N").Substring(0, 16);
+            var id = SystemIdentification.GetSystemIdForPublisher().Id;
+            return CryptographicBuffer.EncodeToHexString(id).Substring(0, 16);
         }
     }
 }

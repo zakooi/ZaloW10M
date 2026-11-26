@@ -1,12 +1,16 @@
 ﻿using Windows.ApplicationModel.Activation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using ZaloW10M.Services;
 using ZaloW10M.Views;
 
 namespace ZaloW10M
 {
     sealed partial class App : Application
     {
+        // One socket for the whole app lifetime. Screens come and go; this does not.
+        public static ZaloWebSocketService WebSocketService { get; set; }
+
         public App()
         {
             this.InitializeComponent();

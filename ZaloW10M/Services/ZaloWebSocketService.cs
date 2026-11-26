@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
@@ -27,6 +26,7 @@ namespace ZaloW10M.Services
 
         public async Task ConnectAsync()
         {
+            if (_webSocket != null) return;
             try
             {
                 StatusChanged?.Invoke("Connecting to Zalo Gateway...");
@@ -35,7 +35,6 @@ namespace ZaloW10M.Services
                 _webSocket.MessageReceived += WebSocket_MessageReceived;
                 _webSocket.Closed += WebSocket_Closed;
 
-                // Add Cookie Header if supported or connect directly
                 if (!string.IsNullOrEmpty(_creds.Cookie))
                 {
                     _webSocket.SetRequestHeader("Cookie", _creds.Cookie);
@@ -47,20 +46,16 @@ namespace ZaloW10M.Services
                 _dataWriter = new DataWriter(_webSocket.OutputStream);
 
                 StatusChanged?.Invoke("Connected");
-                StartPingTimer();
+                _pingTimer = ThreadPoolTimer.CreatePeriodicTimer(async timer =>
+                {
+                    await SendPingAsync();
+                }, TimeSpan.FromSeconds(30));
             }
             catch (Exception ex)
             {
+                Cleanup();
                 StatusChanged?.Invoke($"Connection Error: {ex.Message}");
             }
-        }
-
-        private void StartPingTimer()
-        {
-            _pingTimer = ThreadPoolTimer.CreatePeriodicTimer(async (timer) =>
-            {
-                await SendPingAsync();
-            }, TimeSpan.FromSeconds(30));
         }
 
         public async Task SendPingAsync()
@@ -87,7 +82,6 @@ namespace ZaloW10M.Services
 
                     var (version, cmd, subCmd, dataJson) = ZaloProtocol.ParseWebSocketFrame(buffer, _creds.CipherKey);
 
-                    // Handshake response -> extracts cipherKey
                     if (cmd == ZaloProtocol.CMD_HANDSHAKE && subCmd == 1)
                     {
                         if (!string.IsNullOrEmpty(dataJson))
@@ -96,7 +90,6 @@ namespace ZaloW10M.Services
                             _creds.CipherKey = jObj["cipherKey"]?.ToString();
                         }
                     }
-                    // Incoming message
                     else if (cmd == ZaloProtocol.CMD_USER_MESSAGE || cmd == ZaloProtocol.CMD_GROUP_MESSAGE)
                     {
                         if (!string.IsNullOrEmpty(dataJson))
@@ -121,15 +114,23 @@ namespace ZaloW10M.Services
 
         private void WebSocket_Closed(IWebSocket sender, WebSocketClosedEventArgs args)
         {
-            _pingTimer?.Cancel();
+            Cleanup();
             StatusChanged?.Invoke("Disconnected");
+        }
+
+        private void Cleanup()
+        {
+            _pingTimer?.Cancel();
+            _pingTimer = null;
+            _dataWriter?.Dispose();
+            _dataWriter = null;
+            _webSocket?.Dispose();
+            _webSocket = null;
         }
 
         public void Disconnect()
         {
-            _pingTimer?.Cancel();
-            _webSocket?.Dispose();
-            _webSocket = null;
+            Cleanup();
         }
     }
 }

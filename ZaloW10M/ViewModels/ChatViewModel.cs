@@ -12,10 +12,18 @@ namespace ZaloW10M.ViewModels
         private readonly ZaloCredentials _creds;
         private readonly ZaloConversation _conversation;
         private readonly ZaloChatService _chatService;
+        private readonly ZaloWebSocketService _wsService;
 
         public ObservableCollection<ZaloMessage> Messages { get; } = new ObservableCollection<ZaloMessage>();
 
         public string Title => _conversation.Name;
+
+        private string _statusText;
+        public string StatusText
+        {
+            get => _statusText;
+            set => SetProperty(ref _statusText, value);
+        }
 
         private string _inputMessage;
         public string InputMessage
@@ -26,13 +34,21 @@ namespace ZaloW10M.ViewModels
 
         public ICommand SendCommand { get; }
 
-        public ChatViewModel(ZaloCredentials creds, ZaloConversation conversation)
+        public ChatViewModel(ZaloCredentials creds, ZaloConversation conversation, ZaloWebSocketService wsService)
         {
             _creds = creds;
             _conversation = conversation;
+            _wsService = wsService;
             _chatService = new ZaloChatService(_creds);
+            _wsService.MessageReceived += OnLiveMessageReceived;
 
             SendCommand = new RelayCommand(async () => await SendMessageAsync());
+        }
+
+        private void OnLiveMessageReceived(ZaloMessage msg)
+        {
+            if (string.IsNullOrEmpty(msg.UidFrom) || msg.UidFrom != _conversation.ThreadId) return;
+            _ = DispatcherHelper.ExecuteOnUIThreadAsync(() => { Messages.Add(msg); });
         }
 
         public async Task SendMessageAsync()
@@ -50,7 +66,17 @@ namespace ZaloW10M.ViewModels
             };
             Messages.Add(localMsg);
 
-            await _chatService.SendTextMessageAsync(_conversation.ThreadId, textToSend, _conversation.IsGroup);
+            bool sent = await _chatService.SendTextMessageAsync(_conversation.ThreadId, textToSend, _conversation.IsGroup);
+            if (!sent)
+            {
+                Messages.Remove(localMsg);
+                StatusText = "Gửi thất bại.";
+            }
+        }
+
+        public void Detach()
+        {
+            _wsService.MessageReceived -= OnLiveMessageReceived;
         }
     }
 }

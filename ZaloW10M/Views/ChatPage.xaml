@@ -16,6 +16,7 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="&#xE0C4;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="White" Click="Back_Click" Margin="0,0,8,0"/>
                 <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding StatusText}" Margin="8,0,0,0" FontSize="12" Foreground="#FFD0D0" VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 

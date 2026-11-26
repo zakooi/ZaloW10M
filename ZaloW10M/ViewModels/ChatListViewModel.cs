@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using ZaloW10M.Core.Models;
 using ZaloW10M.Helpers;
@@ -22,40 +21,46 @@ namespace ZaloW10M.ViewModels
             set => SetProperty(ref _statusText, value);
         }
 
+        internal ZaloWebSocketService WebSocketService => _wsService;
+
         public ChatListViewModel(ZaloCredentials creds)
         {
             _creds = creds;
             _chatService = new ZaloChatService(_creds);
-            _wsService = new ZaloWebSocketService(_creds);
-            _wsService.StatusChanged += (s) => DispatcherHelper.ExecuteOnUIThreadAsync(() => StatusText = s);
+            _wsService = App.WebSocketService ?? (App.WebSocketService = new ZaloWebSocketService(creds));
+            _wsService.StatusChanged += OnStatusChanged;
             _wsService.MessageReceived += OnLiveMessageReceived;
         }
+
+        private void OnStatusChanged(string status) =>
+            _ = DispatcherHelper.ExecuteOnUIThreadAsync(() => { StatusText = status; });
 
         public async Task LoadConversationsAsync()
         {
             var list = await _chatService.GetRecentConversationsAsync();
             Conversations.Clear();
             foreach (var item in list)
-            {
                 Conversations.Add(item);
-            }
+            if (list.Count == 0) StatusText = "Chưa có hội thoại nào.";
             await _wsService.ConnectAsync();
         }
 
         private void OnLiveMessageReceived(ZaloMessage msg)
         {
+            if (string.IsNullOrEmpty(msg.UidFrom)) return;
+
             _ = DispatcherHelper.ExecuteOnUIThreadAsync(() =>
             {
-                // Update or push conversation to top
                 foreach (var conv in Conversations)
                 {
                     if (conv.ThreadId == msg.UidFrom)
                     {
                         conv.LastMessage = msg.Content;
-                        conv.UnreadCount++;
+                        if (!msg.IsOutgoing) conv.UnreadCount++;
                         return;
                     }
                 }
+                if (msg.IsOutgoing) return;
                 Conversations.Insert(0, new ZaloConversation
                 {
                     ThreadId = msg.UidFrom,
@@ -64,6 +69,12 @@ namespace ZaloW10M.ViewModels
                     UnreadCount = 1
                 });
             });
+        }
+
+        public void Detach()
+        {
+            _wsService.StatusChanged -= OnStatusChanged;
+            _wsService.MessageReceived -= OnLiveMessageReceived;
         }
     }
 }

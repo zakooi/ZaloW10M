@@ -28,8 +28,9 @@ namespace ZaloW10M.Services
                 
                 string code = jObj["data"]?["code"]?.ToString();
                 string token = jObj["data"]?["token"]?.ToString();
-                
-                string qrImageUrl = $"https://id.zalo.me/account/qr/image?code={code}";
+                if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(token)) return (null, null);
+
+                string qrImageUrl = $"https://id.zalo.me/account/qr/image?code={Uri.EscapeDataString(code)}";
                 return (qrImageUrl, token);
             }
             catch
@@ -42,7 +43,7 @@ namespace ZaloW10M.Services
         {
             try
             {
-                string url = $"https://id.zalo.me/account/login/qr/check?token={token}&t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+                string url = $"https://id.zalo.me/account/login/qr/check?token={Uri.EscapeDataString(token)}&t={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
                 var res = await _httpClient.GetAsync(url);
                 string body = await res.Content.ReadAsStringAsync();
                 var jObj = JObject.Parse(body);
@@ -72,7 +73,7 @@ namespace ZaloW10M.Services
             try
             {
                 if (string.IsNullOrEmpty(creds.Imei))
-                    creds.Imei = ZaloCrypto.GenerateImei();
+                    creds.Imei = ZaloCrypto.GenerateDeviceId();
 
                 long ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 var queryParams = new Dictionary<string, string>
@@ -84,7 +85,7 @@ namespace ZaloW10M.Services
                 };
 
                 string signKey = ZaloCrypto.GenerateSignKey(queryParams);
-                string url = $"https://wpa.chat.zalo.me/api/login/getServerInfo?computer_name=Web&imei={creds.Imei}&language=vi&ts={ts}&signkey={signKey}";
+                string url = $"https://wpa.chat.zalo.me/api/login/getServerInfo?computer_name=Web&imei={Uri.EscapeDataString(creds.Imei)}&language=vi&ts={ts}&signkey={signKey}";
 
                 var req = new HttpRequestMessage(HttpMethod.Get, url);
                 req.Headers.Add("Cookie", creds.Cookie);
@@ -95,7 +96,9 @@ namespace ZaloW10M.Services
 
                 if (jObj["error_code"]?.Value<int>() == 0)
                 {
-                    creds.SecretKey = jObj["data"]?["zpw_sek"]?.ToString();
+                    string secret = jObj["data"]?["zpw_sek"]?.ToString();
+                    if (string.IsNullOrEmpty(secret)) return false;
+                    creds.SecretKey = secret;
                     creds.WsUrl = jObj["data"]?["ws_url"]?.ToString() ?? "wss://chat.zalo.me/ws/";
                     return true;
                 }

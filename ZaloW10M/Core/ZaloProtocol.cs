@@ -7,11 +7,8 @@ namespace ZaloW10M.Core
     public static class ZaloProtocol
     {
         public const ushort CMD_HANDSHAKE = 1;
-        public const ushort CMD_PING = 2;
         public const ushort CMD_USER_MESSAGE = 501;
         public const ushort CMD_GROUP_MESSAGE = 521;
-        public const ushort CMD_CONTROL_EVENT = 601;
-        public const ushort CMD_REACTION = 612;
 
         public static (byte version, ushort cmd, byte subCmd, string dataJson) ParseWebSocketFrame(byte[] buffer, string cipherKey)
         {
@@ -43,16 +40,21 @@ namespace ZaloW10M.Core
                     {
                         return (version, cmd, subCmd, dataStr);
                     }
-                    else if (encryptType == 1) // Base64 JSON
+                    if (encryptType == 1 || encryptType == 2 || encryptType == 3)
                     {
-                        var bytes = Convert.FromBase64String(dataStr);
-                        return (version, cmd, subCmd, Encoding.UTF8.GetString(bytes));
-                    }
-                    else if (encryptType == 2 || encryptType == 3) // AES-GCM
-                    {
-                        var encBytes = Convert.FromBase64String(dataStr);
-                        string decrypted = ZaloCrypto.DecryptAesGcm(encBytes, cipherKey);
-                        return (version, cmd, subCmd, decrypted);
+                        try
+                        {
+                            var bytes = Convert.FromBase64String(dataStr);
+                            string data = encryptType == 1
+                                ? Encoding.UTF8.GetString(bytes)
+                                : ZaloCrypto.DecryptAesGcm(bytes, cipherKey);
+                            return (version, cmd, subCmd, data ?? string.Empty);
+                        }
+                        catch
+                        {
+                            // Bad ciphertext must not be shown as message text.
+                            return (version, cmd, subCmd, string.Empty);
+                        }
                     }
                 }
                 return (version, cmd, subCmd, rawText);

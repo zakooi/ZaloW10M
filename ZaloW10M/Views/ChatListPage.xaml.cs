@@ -23,15 +23,28 @@ namespace ZaloW10M.Views
                 _creds = creds;
                 _viewModel = new ChatListViewModel(_creds);
                 this.DataContext = _viewModel;
-                await _viewModel.LoadConversationsAsync();
+                try
+                {
+                    await _viewModel.LoadConversationsAsync();
+                }
+                catch
+                {
+                    _viewModel.StatusText = "Không thể tải hội thoại.";
+                }
             }
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+            _viewModel?.Detach();
         }
 
         private void Conversation_Click(object sender, ItemClickEventArgs e)
         {
-            if (e.ClickedItem is ZaloConversation conv)
+            if (e.ClickedItem is ZaloConversation conv && _viewModel != null)
             {
-                Frame.Navigate(typeof(ChatPage), (creds: _creds, conv: conv));
+                Frame.Navigate(typeof(ChatPage), (creds: _creds, conv: conv, ws: _viewModel.WebSocketService));
             }
         }
     }

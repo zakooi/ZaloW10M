@@ -16,4 +16,4 @@ Dự án chat Zalo native dành riêng cho các thiết bị Windows 10 Mobile (
    ```
 
 2. Vào tab **Actions** trên GitHub repository của bạn để theo dõi quá trình build ARM tự động.
-3. Sau khi build xong, tải file `.appx` từ Artifacts về và deploy lên thiết bị Lumia qua Windows Device Portal!
+3. Sau khi build xong, tải file `.appx` từ Artifacts về. Workflow build với `AppxPackageSigningEnabled=false`, nên để deploy qua Windows Device Portal bạn cần bật **Developer Mode** trên máy và cài certificate dùng để ký lại gói (hoặc tự ký gói trước khi deploy). Nếu máy không ở Developer Mode, Device Portal sẽ từ chối cài `.appx` unsigned.

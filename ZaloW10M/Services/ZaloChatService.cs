@@ -10,26 +10,21 @@ namespace ZaloW10M.Services
 {
     public class ZaloChatService
     {
-        private readonly HttpClient _httpClient;
+        // One client for all chats; per-request headers carry the current user.
+        private static readonly HttpClient SharedClient = new HttpClient();
         private readonly ZaloCredentials _creds;
 
         public ZaloChatService(ZaloCredentials creds)
         {
             _creds = creds;
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", _creds.UserAgent);
-            if (!string.IsNullOrEmpty(_creds.Cookie))
-            {
-                _httpClient.DefaultRequestHeaders.Add("Cookie", _creds.Cookie);
-            }
         }
 
         public async Task<bool> SendTextMessageAsync(string threadId, string text, bool isGroup)
         {
             try
             {
-                string endpoint = isGroup 
-                    ? "https://wpa.chat.zalo.me/api/group/sendmsg" 
+                string endpoint = isGroup
+                    ? "https://wpa.chat.zalo.me/api/group/sendmsg"
                     : "https://wpa.chat.zalo.me/api/message/sendmsg";
 
                 long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -43,12 +38,18 @@ namespace ZaloW10M.Services
                 };
 
                 string encryptedParams = ZaloCrypto.EncryptAesCbc(payload.ToString(), _creds.SecretKey);
+                if (string.IsNullOrEmpty(encryptedParams)) return false;
+
                 var content = new FormUrlEncodedContent(new[]
                 {
                     new KeyValuePair<string, string>("params", encryptedParams)
                 });
+                var req = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = content };
+                req.Headers.TryAddWithoutValidation("User-Agent", _creds.UserAgent);
+                if (!string.IsNullOrEmpty(_creds.Cookie))
+                    req.Headers.TryAddWithoutValidation("Cookie", _creds.Cookie);
 
-                var res = await _httpClient.PostAsync(endpoint, content);
+                var res = await SharedClient.SendAsync(req);
                 string resBody = await res.Content.ReadAsStringAsync();
                 var resObj = JObject.Parse(resBody);
 
@@ -60,20 +61,10 @@ namespace ZaloW10M.Services
             }
         }
 
-        public async Task<List<ZaloConversation>> GetRecentConversationsAsync()
+        public Task<List<ZaloConversation>> GetRecentConversationsAsync()
         {
-            var list = new List<ZaloConversation>();
-            // Sample placeholder data if API requires dynamic sync token
-            list.Add(new ZaloConversation
-            {
-                ThreadId = "sample_user_1",
-                Name = "Zalo Official Support",
-                LastMessage = "Chào mừng bạn đến với Zalo trên Windows 10 Mobile!",
-                UnreadCount = 0,
-                IsGroup = false,
-                UpdatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            });
-            return await Task.FromResult(list);
+            // shortcut: no recent-conversation API yet, replace when the sync endpoint is known
+            return Task.FromResult(new List<ZaloConversation>());
         }
     }
 }

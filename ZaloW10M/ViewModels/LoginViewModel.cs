@@ -10,7 +10,6 @@ namespace ZaloW10M.ViewModels
     public class LoginViewModel : ObservableObject
     {
         private readonly ZaloAuthService _authService = new ZaloAuthService();
-        private readonly SessionManager _sessionManager = new SessionManager();
 
         private BitmapImage _qrImage;
         public BitmapImage QrImage
@@ -35,25 +34,10 @@ namespace ZaloW10M.ViewModels
 
         public event Action<ZaloCredentials> LoginSuccess;
 
-        public async Task InitializeAsync()
-        {
-            // Check existing session
-            var saved = _sessionManager.LoadSession();
-            if (saved != null && !string.IsNullOrEmpty(saved.Cookie))
-            {
-                StatusText = "Đang khôi phục phiên đăng nhập...";
-                IsLoading = true;
-                bool ok = await _authService.GetServerInfoAsync(saved);
-                IsLoading = false;
-                if (ok)
-                {
-                    LoginSuccess?.Invoke(saved);
-                    return;
-                }
-            }
+        // Only the newest QR poll may log in.
+        private string _currentQrToken;
 
-            await LoadQrCodeAsync();
-        }
+        public Task InitializeAsync() => LoadQrCodeAsync();
 
         public async Task LoadQrCodeAsync()
         {
@@ -66,40 +50,44 @@ namespace ZaloW10M.ViewModels
             {
                 QrImage = new BitmapImage(new Uri(qrUrl));
                 StatusText = "Vui lòng mở Zalo trên điện thoại khác và quét mã QR";
+                _currentQrToken = token;
                 _ = PollQrStatusAsync(token);
             }
             else
             {
+                _currentQrToken = null;
                 StatusText = "Không thể lấy mã QR. Nhấn để thử lại.";
             }
         }
 
         private async Task PollQrStatusAsync(string token)
         {
-            int attempts = 0;
-            while (attempts < 60)
+            for (int attempts = 0; attempts < 60; attempts++)
             {
                 await Task.Delay(2000);
-                var (success, cookie, uid) = await _authService.CheckQrStatusAsync(token);
-                if (success)
-                {
-                    await DispatcherHelper.ExecuteOnUIThreadAsync(async () =>
-                    {
-                        StatusText = "Đăng nhập thành công! Đang cấu hình...";
-                        var creds = new ZaloCredentials
-                        {
-                            Cookie = cookie,
-                            UserId = uid
-                        };
+                if (token != _currentQrToken) return;
 
-                        await _authService.GetServerInfoAsync(creds);
-                        _sessionManager.SaveSession(creds);
-                        LoginSuccess?.Invoke(creds);
+                var (success, cookie, uid) = await _authService.CheckQrStatusAsync(token);
+                if (!success) continue;
+
+                var creds = new ZaloCredentials { Cookie = cookie, UserId = uid };
+                if (!await _authService.GetServerInfoAsync(creds))
+                {
+                    await DispatcherHelper.ExecuteOnUIThreadAsync(() =>
+                    {
+                        StatusText = "Không thể lấy thông tin máy chủ. Quét lại mã QR.";
                     });
                     return;
                 }
-                attempts++;
+
+                await DispatcherHelper.ExecuteOnUIThreadAsync(() =>
+                {
+                    StatusText = "Đăng nhập thành công!";
+                    LoginSuccess?.Invoke(creds);
+                });
+                return;
             }
+
             await DispatcherHelper.ExecuteOnUIThreadAsync(() =>
             {
                 StatusText = "Mã QR đã hết hạn. Nhấn vào mã để làm mới.";
