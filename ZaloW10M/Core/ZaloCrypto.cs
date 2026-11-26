@@ -60,8 +60,7 @@ namespace ZaloW10M.Core
                 var provider = SymmetricKeyAlgorithmProvider.OpenAlgorithm(SymmetricAlgorithmNames.AesGcm);
                 var key = provider.CreateSymmetricKey(keyBytes.AsBuffer());
 
-                var authParams = new AuthenticatedEncryptionParameters(iv, tag, null);
-                var decrypted = CryptographicEngine.Decrypt(key, cipherText, authParams);
+                var decrypted = CryptographicEngine.DecryptAndAuthenticate(key, cipherText, iv, tag, null);
                 return CryptographicBuffer.ConvertBinaryToString(BinaryStringEncoding.Utf8, decrypted);
             }
             catch
