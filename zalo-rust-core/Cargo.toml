@@ -1,0 +1,25 @@
+[package]
+name = "zalo_core"
+version = "0.1.0"
+edition = "2021"
+description = "Clean-room Rust core for Zalo-compatible protocol/crypto primitives, with a C ABI for UWP P/Invoke."
+license = "MIT"
+
+[lib]
+name = "zalo_core"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+aes = "0.8"
+aes-gcm = "0.10"
+base64 = "0.22"
+cbc = { version = "0.1", features = ["block-padding", "alloc"] }
+libc = "0.2"
+md-5 = "0.10"
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
