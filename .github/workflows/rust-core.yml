@@ -1,0 +1,38 @@
+name: Zalo Rust core
+
+on:
+  push:
+    paths:
+      - 'zalo-rust-core/**'
+      - '.github/workflows/rust-core.yml'
+  pull_request:
+    paths:
+      - 'zalo-rust-core/**'
+      - '.github/workflows/rust-core.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unit tests
+        run: cargo test --locked --manifest-path zalo-rust-core/Cargo.toml
+
+      - name: Release build
+        run: cargo build --release --locked --manifest-path zalo-rust-core/Cargo.toml
+
+      - name: C ABI smoke test
+        run: |
+          gcc zalo-rust-core/ffi_smoke.c zalo-rust-core/target/release/libzalo_core.a -ldl -lpthread -lm -o /tmp/zalo_ffi_smoke
+          /tmp/zalo_ffi_smoke
+
+      - name: Upload libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: zalo-core-linux
+          path: |
+            zalo-rust-core/target/release/libzalo_core.a
+            zalo-rust-core/target/release/libzalo_core.so
+            zalo-rust-core/target/release/libzalo_core.rlib

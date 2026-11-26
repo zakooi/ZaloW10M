@@ -25,10 +25,23 @@ jobs:
         nuget restore ZaloW10M.sln
         msbuild ZaloW10M.sln /t:Restore /p:Platform=ARM
 
+    - name: Create test signing certificate
+      shell: powershell
+      run: |
+        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=ZaloW10M" `
+          -KeyUsage DigitalSignature -KeyExportPolicy Exportable -FriendlyName "ZaloW10M test signing" `
+          -CertStoreLocation "Cert:\CurrentUser\My" `
+          -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+        $password = ConvertTo-SecureString -String "zalo-appx-test" -Force -AsPlainText
+        Export-PfxCertificate -Cert $cert -FilePath "$($env:GITHUB_WORKSPACE)\ZaloW10M_Test.pfx" -Password $password | Out-Null
+        Export-Certificate -Cert $cert -FilePath "$($env:GITHUB_WORKSPACE)\ZaloW10M_Test.cer" | Out-Null
+        Write-Host "Created certificate: $($cert.Subject)"
+
     - name: Build and Package UWP (ARM Release)
       shell: powershell
       run: |
-        $buildCmd = "msbuild ZaloW10M.sln /p:Configuration=Release /p:Platform=ARM /p:AppxPackageDir=""$($env:GITHUB_WORKSPACE)\AppPackages\"" /p:AppxBundle=Always /p:AppxBundlePlatforms=ARM /p:UapAppxPackageBuildMode=SideLoadOnly /p:AppxPackageSigningEnabled=false /fl /flp:logfile=msbuild.log;verbosity=normal"
+        $pfx = "$($env:GITHUB_WORKSPACE)\ZaloW10M_Test.pfx"
+        $buildCmd = "msbuild ZaloW10M.sln /p:Configuration=Release /p:Platform=ARM /p:AppxPackageDir=""$($env:GITHUB_WORKSPACE)\AppPackages\"" /p:AppxBundle=Always /p:AppxBundlePlatforms=ARM /p:UapAppxPackageBuildMode=SideLoadOnly /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=""$pfx"" /p:PackageCertificatePassword=zalo-appx-test /fl /flp:logfile=msbuild.log;verbosity=normal"
         Write-Host "Running: $buildCmd"
         Invoke-Expression $buildCmd
         if ($LASTEXITCODE -ne 0) {
@@ -46,4 +59,5 @@ jobs:
         name: ZaloW10M-Build-Output
         path: |
           AppPackages/**/*
+          ZaloW10M_Test.cer
           msbuild.log
