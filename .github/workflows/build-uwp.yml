@@ -43,7 +43,7 @@ jobs:
         $pfx = "$($env:GITHUB_WORKSPACE)\ZaloW10M_Test.pfx"
         $sdkRoot = "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP"
         $tpv = Get-ChildItem $sdkRoot -Directory |
-          Where-Object { $_.Name -match '^10\.' } |
+          Where-Object { $_.Name -match '^10\.' -and [version]$_.Name -ge [version]'10.0.16299.0' -and [version]$_.Name -le [version]'10.0.22621.0' } |
           Sort-Object { [version]$_.Name } -Descending |
           Select-Object -First 1 -ExpandProperty Name
         if (-not $tpv) { throw "No UAP SDK found under $sdkRoot" }
