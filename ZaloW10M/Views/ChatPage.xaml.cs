@@ -1,4 +1,5 @@
-﻿using Windows.UI.Xaml;
+﻿using System;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
 using ZaloW10M.Core.Models;
@@ -19,9 +20,9 @@ namespace ZaloW10M.Views
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            if (e.Parameter is (ZaloCredentials creds, ZaloConversation conv, ZaloWebSocketService ws))
+            if (e.Parameter is ValueTuple<ZaloCredentials, ZaloConversation, ZaloWebSocketService> nav)
             {
-                _viewModel = new ChatViewModel(creds, conv, ws);
+                _viewModel = new ChatViewModel(nav.Item1, nav.Item2, nav.Item3);
                 this.DataContext = _viewModel;
             }
         }
