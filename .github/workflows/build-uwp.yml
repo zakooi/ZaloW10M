@@ -41,9 +41,26 @@ jobs:
       shell: powershell
       run: |
         $pfx = "$($env:GITHUB_WORKSPACE)\ZaloW10M_Test.pfx"
-        $buildCmd = "msbuild ZaloW10M.sln /p:Configuration=Release /p:Platform=ARM /p:AppxPackageDir=""$($env:GITHUB_WORKSPACE)\AppPackages\"" /p:AppxBundle=Always /p:AppxBundlePlatforms=ARM /p:UapAppxPackageBuildMode=SideLoadOnly /p:AppxPackageSigningEnabled=true /p:PackageCertificateKeyFile=""$pfx"" /p:PackageCertificatePassword=zalo-appx-test /fl /flp:logfile=msbuild.log;verbosity=normal"
-        Write-Host "Running: $buildCmd"
-        Invoke-Expression $buildCmd
+        $sdkRoot = "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP"
+        $tpv = Get-ChildItem $sdkRoot -Directory |
+          Where-Object { $_.Name -match '^10\.' } |
+          Sort-Object { [version]$_.Name } -Descending |
+          Select-Object -First 1 -ExpandProperty Name
+        if (-not $tpv) { throw "No UAP SDK found under $sdkRoot" }
+        Write-Host "Using TargetPlatformVersion $tpv"
+
+        & msbuild ZaloW10M.sln `
+          /p:Configuration=Release `
+          /p:Platform=ARM `
+          "/p:AppxPackageDir=$($env:GITHUB_WORKSPACE)\AppPackages\" `
+          /p:AppxBundle=Always `
+          /p:AppxBundlePlatforms=ARM `
+          /p:UapAppxPackageBuildMode=SideLoadOnly `
+          /p:AppxPackageSigningEnabled=true `
+          "/p:PackageCertificateKeyFile=$pfx" `
+          /p:PackageCertificatePassword=zalo-appx-test `
+          "/p:TargetPlatformVersion=$tpv" `
+          /fl "/flp:logfile=msbuild.log;verbosity=normal"
         if ($LASTEXITCODE -ne 0) {
             Write-Host "=== MSBUILD ERROR LOG ==="
             if (Test-Path msbuild.log) {
