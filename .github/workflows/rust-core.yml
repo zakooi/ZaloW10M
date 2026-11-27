@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - 'zalo-rust-core/**'
+      - 'ZaloW10M/Core/**'
+      - 'tools/parity/**'
       - '.github/workflows/rust-core.yml'
   pull_request:
     paths:
       - 'zalo-rust-core/**'
+      - 'ZaloW10M/Core/**'
+      - 'tools/parity/**'
       - '.github/workflows/rust-core.yml'
   workflow_dispatch:
 
@@ -27,6 +31,19 @@ jobs:
         run: |
           gcc zalo-rust-core/ffi_smoke.c zalo-rust-core/target/release/libzalo_core.a -ldl -lpthread -lm -o /tmp/zalo_ffi_smoke
           /tmp/zalo_ffi_smoke
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Rust to C# parity
+        run: |
+          cargo build --release --quiet --bin parity --manifest-path zalo-rust-core/Cargo.toml
+          zalo-rust-core/target/release/parity > /tmp/rust.txt
+          dotnet build tools/parity/Parity.csproj -c Release -v q --nologo
+          dotnet tools/parity/bin/Release/net8.0/Parity.dll > /tmp/csharp.txt
+          diff -u /tmp/rust.txt /tmp/csharp.txt
 
       - name: Upload libraries
         uses: actions/upload-artifact@v4
